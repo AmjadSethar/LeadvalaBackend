@@ -1,0 +1,1 @@
+[31-Dec-2024 14:58:15 Asia/Kolkata] PHP Fatal error:  Allowed memory size of 134217728 bytes exhausted (tried to allocate 407657176 bytes) in /home/vycspktz/public_html/fix-it/vendor/guzzlehttp/psr7/src/Utils.php on line 432

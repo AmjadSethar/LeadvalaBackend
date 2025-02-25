@@ -1,0 +1,85 @@
+/**=====================
+      Dropdown CSS Start
+==========================**/
+
+.dropdown {
+    .dropdown-menu {
+        top: 9px !important;
+        margin: 0;
+        padding: 10px;
+        width: max-content !important;
+        min-width: 13rem;
+        left: 0;
+
+        .form-check-label {
+            margin-bottom: 0;
+            font-size: 14px;
+        }
+
+        .form-check {
+            margin-bottom: 4px;
+        }
+    }
+}
+
+.btn-group {
+    .dropdown-menu {
+        top: 55px;
+        margin: 0;
+        padding: 10px;
+        width: max-content !important;
+        min-width: 13rem;
+
+        #table-filter-status-wrapper,
+        #coupons-filter-status-wrapper {
+            padding: 0 !important;
+
+            label {
+                font-size: 14px;
+                font-weight: 500;
+            }
+
+            .form-select {
+                width: 100%;
+
+                option:hover {
+                    background-color: yellow;
+                }
+            }
+        }
+
+        button {
+            &.dropdown-item {
+                font-size: 14px;
+                font-weight: 500;
+                background-color: $primary-color;
+                border-radius: 8px;
+                padding: 12px;
+                color: $white;
+                margin-top: 10px;
+
+                &:hover {
+                    color: $primary-color !important;
+                    background-color: rgba($primary-color, 0.10);
+                }
+            }
+        }
+
+        .dropdown-divider {
+            display: none;
+        }
+    }
+}
+
+.dropdown-item {
+
+    &:hover {
+        color: $primary-color !important;
+        background-color: rgba($primary-color, 0.10);
+    }
+}
+
+
+/**=====================
+      Dropdown CSS End
+==========================**/

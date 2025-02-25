@@ -1,0 +1,47 @@
+{
+  "public/admin/images/svg/add.svg": {
+    "file": "assets/add-a6d4a4d3.svg",
+    "src": "public/admin/images/svg/add.svg"
+  },
+  "public/admin/images/svg/danger.svg": {
+    "file": "assets/danger-9f03517f.svg",
+    "src": "public/admin/images/svg/danger.svg"
+  },
+  "public/admin/images/svg/down-arrow.svg": {
+    "file": "assets/down-arrow-5e57c732.svg",
+    "src": "public/admin/images/svg/down-arrow.svg"
+  },
+  "public/admin/images/svg/file.svg": {
+    "file": "assets/file-caf1015a.svg",
+    "src": "public/admin/images/svg/file.svg"
+  },
+  "public/admin/images/svg/folder.svg": {
+    "file": "assets/folder-7e891edb.svg",
+    "src": "public/admin/images/svg/folder.svg"
+  },
+  "public/admin/images/svg/primary.svg": {
+    "file": "assets/primary-6911773a.svg",
+    "src": "public/admin/images/svg/primary.svg"
+  },
+  "public/admin/images/svg/warning.svg": {
+    "file": "assets/warning-95198772.svg",
+    "src": "public/admin/images/svg/warning.svg"
+  },
+  "public/admin/scss/admin.scss": {
+    "file": "assets/admin-e269b16f.css",
+    "isEntry": true,
+    "src": "public/admin/scss/admin.scss"
+  },
+  "resources/js/app.css": {
+    "file": "assets/app-627c9488.css",
+    "src": "resources/js/app.css"
+  },
+  "resources/js/app.js": {
+    "css": [
+      "assets/app-627c9488.css"
+    ],
+    "file": "assets/app-189f7584.js",
+    "isEntry": true,
+    "src": "resources/js/app.js"
+  }
+}

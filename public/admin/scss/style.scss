@@ -1,0 +1,40 @@
+// utils
+@import "utils/variables";
+
+//base
+@import "base/typography";
+@import "base/reset";
+
+// components
+@import "components/button";
+@import "components/badge";
+@import "components/calendar";
+@import "components/card";
+@import "components/ck_editor";
+@import "components/dropdown";
+@import "components/form";
+@import "components/footer";
+@import "components/header";
+@import "components/login";
+@import "components/loader";
+@import "components/map";
+@import "components/modal";
+@import "components/pagination";
+@import "components/role";
+@import "components/sidebar";
+@import "components/select2";
+@import "components/tabs";
+@import "components/tables";
+@import "components/tree";
+@import "components/vertical_tab";
+@import "components/service";
+
+//pages
+@import "pages/inner-page";
+
+// themes
+@import "themes/dark";
+@import "themes/responsive";
+@import "themes/rtl";
+
+

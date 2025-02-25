@@ -1,0 +1,11 @@
+{
+    "name": "PhonePe",
+    "alias": "phonepe",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\PhonePe\\Providers\\PhonePeServiceProvider"
+    ],
+    "files": []
+}
