@@ -143,13 +143,18 @@ use App\Models\Service;
             try {
                 
                 $items = $this->calculate($request);
-                dd('heelo');
+                // dd('heelo');
                 $booking = $this->booking($items, $request);
+                // dd($booking);
                 $this->storeBooking($items, $request, $booking);
-
+                // dd('hello');
                 DB::commit();
 
+                // dd('hello');
+
                 return $this->createPayment($booking, $request);
+
+                
 
             } catch (Exception $e) {
 
@@ -238,6 +243,8 @@ use App\Models\Service;
                 }
             }
 
+            // dd('hello');
+
             return $this->storeService($item['services'], $request);
         }
 
@@ -299,6 +306,8 @@ use App\Models\Service;
             foreach ($services as $service) {
                 $booking = $this->booking($service, $request);
             }
+
+            // dd('heelo');
 
             return $booking;
         }
@@ -728,6 +737,7 @@ use App\Models\Service;
 
                 if ($request->payment_method != 'cash' && $request->payment_method != 'wallet') {
                     $module = Module::find($request->payment_method);
+                    // dd($module);
                     if (!is_null($module) && $module?->isEnabled()) {
                         $moduleName = $module->getName();
                         $payment = 'Modules\\' . $moduleName . '\\Payment\\' . $moduleName;

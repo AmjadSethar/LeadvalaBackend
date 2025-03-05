@@ -49,6 +49,7 @@ class ServiceController extends Controller
      */
     public function store(CreateServiceRequest $request)
     {
+        // dd($request->all());
         return $this->repository->store($request);
     }
 

@@ -35,6 +35,7 @@ class BannerRepository extends BaseRepository
             $paginate = $request->input('paginate', $query->count());
             $banners = $query->with(['media'])->latest('created_at')->paginate($paginate);
 
+
             return $banners;
         } catch (Exception $e) {
 

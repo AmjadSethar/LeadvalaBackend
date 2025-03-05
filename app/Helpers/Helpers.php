@@ -2,43 +2,142 @@
 
 namespace App\Helpers;
 
+use App\Enums\ServiceTypeEnum;
+use Exception;
+use App\SMS\SMS;
 use App\Enums\BannerTypeEnum;
 use App\Enums\BookingEnum;
 use App\Enums\BookingStatusReq;
+use App\Enums\FrontEnum;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Enums\RoleEnum;
 use App\Enums\SortByEnum;
 use App\Models\Address;
 use App\Models\BankDetail;
+use App\Models\Blog;
 use App\Models\Booking;
 use App\Models\BookingStatus;
 use App\Models\Category;
 use App\Models\Country;
 use App\Models\Currency;
+use App\Models\ExtraCharge;
+use App\Models\HomePage;
 use App\Models\Module;
 use App\Models\ProviderWallet;
 use App\Models\Review;
 use App\Models\Service;
 use App\Models\ServicemanWallet;
 use App\Models\ServicePackage;
+use App\Models\CustomSmsGateway;
 use App\Models\Setting;
 use App\Models\State;
 use App\Models\SystemLang;
+use App\Models\Testimonial;
+use App\Models\ThemeOption;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Models\Zone;
 use Carbon\Carbon;
-use Exception;
 use Google_Client;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Modules\Coupon\Entities\Coupon;
+use MatanYadaev\EloquentSpatial\Objects\Point;
 use Nwidart\Modules\Facades\Module as NwidartModule;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
+
 
 class Helpers
 {
+
+    public static function canCancelBooking($booking)
+    {
+        $settings = self::getSettings();
+        if (isset($settings['general']['cancellation_restriction_hours'])) {
+            $bookingDateTime = Carbon::parse($booking->date_time);
+            $cutoffTime = $bookingDateTime->subHours($settings['general']['cancellation_restriction_hours']);
+            return Carbon::now()->isBefore($cutoffTime);
+        }
+        return true;
+    }
+
+    public static function getEncrypter()
+    {
+        return App::make('encrypter');
+    }
+
+    public static function isEncrypted($key)
+    {
+        return strpos($key, 'eyJpdiI') === 0;
+    }
+
+    public static function getServiceIds() {}
+
+
+    public static function encryptKey($key)
+    {
+        if (config('app.demo')) {
+            if ($key) {
+                return Self::getEncrypter()?->encrypt($key);
+            }
+        }
+
+        return $key;
+    }
+
+    public static function decryptKey($key)
+    {
+        if (config('app.demo')) {
+            if (self::isEncrypted($key)) {
+                return self::getEncrypter()?->decrypt($key);
+            }
+
+            return $key;
+        }
+
+        return $key;
+    }
+
+    public static function getSmsGatewaySettings()
+    {
+        return CustomSmsGateway::first();
+    }
+
+      
+
+    //removed
+    public static function sendSMS($sendTo, $message)
+    {
+        try {
+            $defaultSMSGateway = self::getDefaultSMSGateway();
+            if($defaultSMSGateway){
+                if($defaultSMSGateway == 'custom'){
+                    $sms = new SMS();
+                    $data['to'] = $sendTo;
+                    $data['message'] = $message;
+                    
+                    $sms->sendSMS($data);
+                }
+                $module = NwidartModule::find($defaultSMSGateway);
+                if ($module) {
+                    if (!is_null($module) && $module?->isEnabled()) {
+                        $moduleName = $module->getName();
+                        $sms = 'Modules\\' . $moduleName . '\\SMS\\' . $moduleName;
+                        if (class_exists($sms) && method_exists($sms, 'getIntent')) {
+                            return $sms::getIntent($sendTo, $message);
+                        }
+                    }
+                }   
+            }
+        } catch (Exception $e) {
+        }
+    }
+
     public static function modules()
     {
         return Module::get();
@@ -94,6 +193,14 @@ class Helpers
         return User::whereNull('deleted_at')->where('id', $consumer_id)->first();
     }
 
+    public static function getZoneByPoint($latitude, $longitude)
+    {
+        $lat = (float) $latitude;
+        $lng = (float) $longitude;
+        $point = new Point($lat, $lng);
+        return Zone::whereContains('place_points', $point)->get(['id', 'name']);
+    }
+
     public static function mediaUpload($modelName, $fileName)
     {
         $media = $modelName->addMediaFromRequest($fileName)->toMediaCollection($fileName);
@@ -121,23 +228,97 @@ class Helpers
         return ProviderWallet::where('provider_id', $providerId)->pluck('id')->first();
     }
 
+    public static function getTestimonials($paginate = null)
+    {
+        return Testimonial::paginate($paginate);
+    }
+
+    public static function getServicePackagesByIds($ids, $paginate = null)
+    {
+        return ServicePackage::whereIn('id', $ids)?->whereNull('deleted_at')?->paginate($paginate);
+    }
+
+    public static function getServicePackageById($ids)
+    {
+        return ServicePackage::where('id', $ids)?->whereNull('deleted_at')->first();
+    }
+
+    public static function getBlogsByIds($ids, $paginate = null)
+    {
+        return Blog::whereIn('id', $ids)?->whereNull('deleted_at')?->paginate($paginate);
+    }
+
+    public static function getCurrencyByCode($code)
+    {
+        return Currency::where('code', $code)?->whereNull('deleted_at')?->first();
+    }
+
+    public static function getDefaultCurrencySymbol()
+    {
+        if (session('currency')) {
+            $currency = self::getCurrencyByCode(session('currency'));
+            if ($currency) {
+                return $currency?->symbol;
+            }
+        }
+
+        $settings = self::getSettings();
+        if (isset($settings['general']['default_currency'])) {
+            $currency = $settings['general']['default_currency'];
+            return $currency?->symbol;
+        }
+    }
+
+    public static function getActiveCurrencies()
+    {
+        return Currency::where('status', true)?->whereNull('deleted_at')?->get();
+    }
+
     public static function getServicemanWalletIdByServicemanId($serviceman_id)
     {
         return ServicemanWallet::where('serviceman_id', $serviceman_id)->pluck('id')->first();
     }
 
-    public static function getDefaultCurrencySymbol()
+    public static function getProviders()
+    {
+        return User::role('provider')->whereNull('deleted_at');
+    }
+
+    public static function getProvidersByIds($ids)
+    {
+        return User::role('provider')->whereNull('deleted_at')->whereIn('id',$ids);
+    }
+
+    public static function getTopProvidersByRatings($provider_ids = [])
+    {
+        $providers = self::getProviders()?->get()->filter(function ($provider) {
+            return $provider->review_ratings >= 0;
+        });
+        
+        if(count($provider_ids)) {
+            $providers = self::getProvidersByIds($provider_ids)?->get()->filter(function ($provider) {
+                    return $provider->review_ratings >= 0;
+            });
+        }
+
+        $providers->sortByDesc('review_ratings');
+        return $providers;
+    }
+
+    public static function getServiceRequestSettings()
     {
         $settings = self::getSettings();
-        if (isset($settings['general']['default_currency'])) {
-            $currency = $settings['general']['default_currency'];
-
-            return $currency->symbol;
+        if (isset($settings['service_request'])) {
+            return $settings['service_request'];
         }
     }
 
     public static function getDefaultCurrencyCode()
     {
+        if (session('currency')) {
+            return session('currency');
+        }
+
         $settings = self::getSettings();
         if (isset($settings['general']['default_currency'])) {
             $currency = $settings['general']['default_currency'];
@@ -184,16 +365,17 @@ class Helpers
                 break;
         }
 
-        return $catgoryType;
+        return $categoryType;
     }
 
     public static function getCurrentRoleName()
     {
-        $user = Auth::guard('api')->user();
-        $role = $user->roles->first();
-        $roleName = $role->name;
+        $user = auth()->user();
+        if (request()->expectsJson()) {
+            $user = Auth::guard('api')->user();
+        }
 
-        return $roleName;
+        return $user?->role?->name ?? $user?->roles?->first()?->name;
     }
 
     public static function getCurrentUser()
@@ -218,8 +400,8 @@ class Helpers
 
     public static function getCoupon($data)
     {
-        return Coupon::where([['code', 'LIKE', '%'.$data.'%'], ['status', true]])
-            ->orWhere('id', 'LIKE', '%'.$data.'%')
+        return Coupon::where([['code', 'LIKE', '%' . $data . '%'], ['status', true]])
+            ->orWhere('id', 'LIKE', '%' . $data . '%')
             ->with(['services', 'exclude_services'])
             ->first();
     }
@@ -257,29 +439,39 @@ class Helpers
         $client = new Google_Client();
         $client->setAuthConfig(public_path('admin/assets/firebase.json'));
         $client->addScope('https://www.googleapis.com/auth/firebase.messaging');
+
         $client->refreshTokenWithAssertion();
         $token = $client->getAccessToken();
 
         return $token['access_token'];
     }
 
+    public static function getFirebaseJson()
+    {
+        $firebaseJson = json_decode(file_get_contents(public_path('admin/assets/firebase.json')), true);
+        return $firebaseJson;
+    }
+
     public static function pushNotification($notification)
     {
         try {
 
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, 'https://fcm.googleapis.com/v1/projects/fixit-db226/messages:send');
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($notification));
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Authorization: Bearer '.self::getFCMAccessToken()]);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-            curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            $firebaseJson = self::getFirebaseJson();
+            if ($firebaseJson) {
+                $ch = curl_init();
+                $url = "https://fcm.googleapis.com/v1/projects/{$firebaseJson['project_id']}/messages:send";
+                curl_setopt($ch, CURLOPT_URL, $url);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($notification));
+                curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Authorization: Bearer ' . self::getFCMAccessToken()]);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+                curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-            $result = curl_exec($ch);
-            curl_close($ch);
-
+                $result = curl_exec($ch);
+                curl_close($ch);
+            }
         } catch (Exception $e) {
-
+            
         }
     }
 
@@ -412,11 +604,35 @@ class Helpers
         return $servicePrices->price - (($servicePrices->price * $servicePrices->discount) / 100);
     }
 
+    public static function getServicePackageSalePrice($service_package_id)
+    {
+        $servicePrices = ServicePackage::where('id', $service_package_id)->first(['price', 'discount']);
+        return $servicePrices->price - (($servicePrices->price * $servicePrices->discount) / 100);
+    }
+
     public static function getPackageSalePrice($service_package)
     {
-        $servicePrices = ServicePackage::where('id', $service_package['service_package_id'])->first(['price', 'discount']);
+        $packagePrice = self::getServicePackageSalePrice($service_package['service_package_id']);
+        $serviceTotal = 0;
+        if (!empty($service_package['services'])) {
+            foreach ($service_package['services'] as $service) {
 
-        return $servicePrices->price - (($servicePrices->price * $servicePrices->discount) / 100);
+                if (!empty($service['additional_services'])) {
+                    $serviceTotal = self::getSalePrice($service);
+                    foreach ($service['additional_services'] as $additional_service_id) {
+
+                        $serviceTotal += self::getAdditionalServiceSalePrice($additional_service_id);
+                    }
+                }
+                $packagePrice += $serviceTotal;
+            }
+        }
+        return $packagePrice;
+    }
+
+    public static function getAdditionalServicePrice($additionalService)
+    {
+        return Service::where('id', $additionalService)->pluck('price')->first();
     }
 
     public static function getSubTotal($price, $quantity = 1)
@@ -444,10 +660,22 @@ class Helpers
         }
 
         foreach ($services as $service) {
-            $subtotal[] = self::getSalePrice($service);
-        }
+            $serviceTotal = self::getSalePrice($service);
 
+            if (!empty($service['additional_services'])) {
+                foreach ($service['additional_services'] as $additional_service_id) {
+                    $serviceTotal += self::getAdditionalServiceSalePrice($additional_service_id);
+                }
+            }
+            $subtotal[] = $serviceTotal;
+        }
         return array_sum($subtotal);
+    }
+
+    public static function getAdditionalServiceSalePrice($additional_service_id)
+    {
+        $additionalServicePrices = self::getServicePrice($additional_service_id);
+        return $additionalServicePrices?->price;
     }
 
     public static function getPrice($service)
@@ -460,6 +688,12 @@ class Helpers
         $settings = self::getSettings();
 
         return $settings['activation']['wallet_enable'];
+    }
+
+    public static function additionalServicesIsEnable()
+    {
+        $settings = self::getSettings();
+        return $settings['activation']['additional_services'];
     }
 
     public static function couponIsEnable()
@@ -509,7 +743,6 @@ class Helpers
             case BookingStatusReq::COMPLETED:
                 $status = BookingEnum::COMPLETED;
                 break;
-
         }
 
         return self::getbookingStatusId($status);
@@ -630,6 +863,53 @@ class Helpers
         return $model;
     }
 
+    public static function getProviderRatingList($provider_id)
+    {
+        $review = Review::where('provider_id', $provider_id)->get();
+        return [
+            $review->where('rating', 5)->count(),
+            $review->where('rating', 4)->count(),
+            $review->where('rating', 3)->count(),
+            $review->where('rating', 2)->count(),
+            $review->where('rating', 1)->count(),
+        ];
+    }
+
+    public static function getProviderReviewRatings($provider){
+        return $provider->reviews->avg('rating') ? round($provider->reviews->avg('rating'), 2) : 0;
+    }
+
+    public static function getServicemanReviewRatings($serviceman){
+       
+        return $serviceman->servicemanreviews->avg('rating') ? round($serviceman->servicemanreviews->avg('rating'), 2) : 0;
+    }
+
+    public static function getServiceManRatingList($serviceman_id)
+    {
+        $review = Review::where('serviceman_id', $serviceman_id)->get();
+
+        return [
+            $review->where('rating', 5)->count(),
+            $review->where('rating', 4)->count(),
+            $review->where('rating', 3)->count(),
+            $review->where('rating', 2)->count(),
+            $review->where('rating', 1)->count(),
+        ];
+    }
+
+    public static function getServiceRatingList($service_id)
+    {
+        $review = Review::where('service_id', $service_id)->get();
+
+        return [
+            $review->where('rating', 5)->count(),
+            $review->where('rating', 4)->count(),
+            $review->where('rating', 3)->count(),
+            $review->where('rating', 2)->count(),
+            $review->where('rating', 1)->count(),
+        ];
+    }
+
     public static function getReviewRatings($service_id)
     {
         $review = Review::where('service_id', $service_id)->get();
@@ -643,6 +923,15 @@ class Helpers
         ];
     }
 
+    public static function getRatingPercentages(array $counts, int $total)
+    {
+        if (count($counts ?? [])) {
+            return array_map(fn($count) => $total > 0 ? ($count / $total) * 100 : 0, $counts);
+        }
+
+        return [];
+    }
+
     public static function getProvidersCount()
     {
         return User::role(RoleEnum::PROVIDER)->where('system_reserve', false)->count();
@@ -651,6 +940,11 @@ class Helpers
     public static function getServicemenCount()
     {
         return User::role(RoleEnum::SERVICEMAN)->where('system_reserve', false)->where('provider_id', auth()->user()->id)->count();
+    }
+
+    public static function isZoneExists()
+    {
+        return Zone::whereNull('deleted_at')?->exists();
     }
 
     public static function getServicesCount()
@@ -672,11 +966,11 @@ class Helpers
             $bookings = Booking::whereNull('parent_id')->whereHas('sub_bookings', function ($query) {
                 $query->where('provider_id', auth()->user()->id);
             })->count();
-        } else if($roleName === RoleEnum::SERVICEMAN) {
+        } else if ($roleName === RoleEnum::SERVICEMAN) {
             $bookings = Booking::whereHas('servicemen', function ($query) {
                 $query->where('users.id', auth()->user()->id);
             })->whereNotNull('parent_id')
-              ->count();
+                ->count();
         } else {
             $bookings = Booking::whereNotNull('parent_id')?->count();
         }
@@ -695,7 +989,7 @@ class Helpers
         return NwidartModule::isEnabled($moduleName);
     }
 
-    public static function getAllPaymentModules()
+    public static function getAllModules()
     {
         return NwidartModule::all();
     }
@@ -709,12 +1003,12 @@ class Helpers
     {
         $settings = self::getSettings();
         $paymentMethods = [];
-        $modules = self::getAllPaymentModules();
+        $modules = self::getAllModules();
         $paymentMethods[] = [
             'name' => __('static.cash'),
             'slug' => PaymentMethod::COD,
             'image' => null,
-            'status' => $settings['activation']['cash'],
+            'status' => $settings['activation']['cash'] ? true : false,
         ];
         foreach ($modules as $module) {
             $paymentFile = module_path($module->getName(), 'Config/payment.php');
@@ -723,6 +1017,7 @@ class Helpers
                 $paymentMethods[] = [
                     'name' => $payment['name'],
                     'slug' => $payment['slug'],
+                    'title' => $payment['title'],
                     'image' => url($payment['image']),
                     'status' => $module?->isEnabled(),
                 ];
@@ -732,10 +1027,12 @@ class Helpers
         return $paymentMethods;
     }
 
-    public static function getPaymentMethodConfigs()
+
+    public static function getPaymentModuleList()
     {
+        $settings = self::getSettings();
         $paymentMethods = [];
-        $modules = self::getAllPaymentModules();
+        $modules = self::getAllModules();
         foreach ($modules as $module) {
             $paymentFile = module_path($module->getName(), 'Config/payment.php');
             if (file_exists($paymentFile)) {
@@ -743,6 +1040,48 @@ class Helpers
                 $paymentMethods[] = [
                     'name' => $payment['name'],
                     'slug' => $payment['slug'],
+                    'title' => $payment['title'],
+                    'image' => url($payment['image']),
+                    'status' => $module?->isEnabled(),
+                ];
+            }
+        }
+
+        return $paymentMethods;
+    }
+
+    public static function getActiveOnlinePaymentMethods()
+    {
+        $paymentMethods =  self::getPaymentModuleList();
+        $filteredMethods = array_filter($paymentMethods, function ($method) {
+            return $method['status'] === true;
+        });
+
+        return $filteredMethods;
+    }
+
+    public static function getActivePaymentMethods()
+    {
+        $paymentMethods =  self::getPaymentMethodList();
+        $filteredMethods = array_filter($paymentMethods, function ($method) {
+            return $method['status'] === true;
+        });
+
+        return $filteredMethods;
+    }
+
+    public static function getPaymentMethodConfigs()
+    {
+        $paymentMethods = [];
+        $modules = self::getAllModules();
+        foreach ($modules as $module) {
+            $paymentFile = module_path($module->getName(), 'Config/payment.php');
+            if (file_exists($paymentFile)) {
+                $payment = include $paymentFile;
+                $paymentMethods[] = [
+                    'name' => $payment['name'],
+                    'slug' => $payment['slug'],
+                    'title' => $payment['title'],
                     'image' => url($payment['image']),
                     'status' => $module?->isEnabled(),
                     'configs' => $payment['configs'],
@@ -753,4 +1092,428 @@ class Helpers
 
         return $paymentMethods;
     }
+
+    // SMS Gateways
+    public static function getSMSGatewayList()
+    {
+        $smsGateways = [];
+        $modules = self::getAllModules();
+        foreach ($modules as $module) {
+            $smsFile = module_path($module->getName(), 'Config/sms.php');
+            if (file_exists($smsFile)) {
+                $sms = include $smsFile;
+                $smsGateways[] = [
+                    'name' => $sms['name'],
+                    'slug' => $sms['slug'],
+                    'image' => url($sms['image']),
+                    'status' => $module?->isEnabled(),
+                ];
+            }
+        }
+
+        return $smsGateways;
+    }
+
+
+    public static function getSMSGatewayConfigs()
+    {
+        $smsGateways = [];
+        $modules = self::getAllModules();
+        foreach ($modules as $module) {
+            $smsFile = module_path($module->getName(), 'Config/sms.php');
+            if (file_exists($smsFile)) {
+                $sms = include $smsFile;
+                $smsGateways[] = [
+                    'name' => $sms['name'],
+                    'slug' => $sms['slug'],
+                    'image' => url($sms['image']),
+                    'status' => $module?->isEnabled(),
+                    'configs' => $sms['configs'],
+                    'fields' => $sms['fields'],
+                ];
+            }
+        }
+
+        return $smsGateways;
+    }
+
+    public static function getDefaultSMSGateway()
+    {
+        $settings = self::getSettings();
+        return $settings['general']['default_sms_gateway'] ?? null;
+    }
+
+    //
+    // =================================== Frontend ======================================
+
+    public static function getCurrentHomePage()
+    {
+        return HomePage::where('status', true)?->pluck('content')?->first();
+    }
+
+    public static function getServiceById($id)
+    {
+        return Service::where('id', $id)?->whereNull('deleted_at')?->first();
+    }
+
+    public static function getServiceByProviderId($provider_id)
+    {
+        return Service::where('user_id', $provider_id)?->where('status', true)?->whereNull('deleted_at')?->whereNull('parent_id')?->where('type', ServiceTypeEnum::FIXED)?->latest()?->paginate();
+    }
+
+    public static function getServicesByIds($ids)
+    {
+        return Service::whereIn('id', $ids)?->whereNull('deleted_at')?->where('type', ServiceTypeEnum::FIXED)?->get();
+    }
+
+    public static function getThemeOptions()
+    {
+        return ThemeOption::first()?->options;
+    }
+
+    public static function dateTimeFormat($timestamp, $format)
+    {
+        return Carbon::parse($timestamp)->format($format);
+    }
+
+    public static function getFooterUsefulLinks()
+    {
+        return [
+            [
+                'slug' => '/',
+                'name' => 'Home',
+            ],
+            [
+                'slug' => 'category',
+                'name' => 'Categories',
+            ],
+            [
+                'slug' => 'service',
+                'name' => 'Services',
+            ],
+            [
+                'slug' => 'booking',
+                'name' => 'Bookings',
+            ],
+            [
+                'slug' => 'blog',
+                'name' => 'Blogs',
+            ],
+            [
+                'slug' => 'provider',
+                'name' => 'Providers',
+            ],
+        ];
+    }
+
+    public static function getFooterPagesLinks()
+    {
+        return [
+            [
+                'slug' => 'privacy-policy',
+                'name' => 'Privacy Policy',
+            ],
+            [
+                'slug' => 'terms-conditions',
+                'name' => 'Terms & Conditions',
+            ],
+            [
+                'slug' => 'contact-us',
+                'name' => 'Contact Us',
+            ],
+            [
+                'slug' => 'about-us',
+                'name' => 'About Us',
+            ],
+        ];
+    }
+
+    public static function getFooterOthersLinks()
+    {
+        return [
+            [
+                'slug' => 'account/profile',
+                'name' => 'My Account',
+            ],
+            [
+                'slug' => 'wishlist',
+                'name' => 'Wishlist',
+            ],
+            [
+                'slug' => 'booking',
+                'name' => 'Bookings',
+            ],
+            [
+                'slug' => 'providers',
+                'name' => 'Providers',
+            ],
+            [
+                'slug' => 'service',
+                'name' => 'Services',
+            ],
+        ];
+    }
+
+
+    public static function getAssetUrl($url)
+    {
+        return str_replace(config('app.url'), "", $url);
+    }
+
+    public static function getServicemenByProviderId($provider_id)
+    {
+        return User::where('provider_id', $provider_id)?->whereNull('deleted_at')?->get();
+    }
+    
+    public static function getUsersByIds($ids)
+    {
+        return User::whereIn('id', $ids)?->whereNull('deleted_at')?->get();
+    }
+
+    public static function getPerServicemen($service)
+    {
+        $reqServicemen = $service?->required_servicemen;
+        return $service?->service_rate / (($reqServicemen > 0) ? $reqServicemen : 1);
+    }
+
+    public static function getServiceCategories()
+    {
+        return Category::where('status', true)?->where('category_type', 'service')?->whereNull('deleted_at')?->get();
+    }
+
+    public static function getCoupons()
+    {
+        return Coupon::whereNull('deleted_at')?->get();
+    }
+
+    public static function getActiveBookingStatusList()
+    {
+        return BookingStatus::where('status', true)?->whereNull('deleted_at')?->get();
+    }
+
+    public static function isExtraChargePaymentPending($booking_id)
+    {
+        return ExtraCharge::where('booking_id', $booking_id)
+            ?->whereNot('payment_status', PaymentStatus::COMPLETED)
+            ?->exists() ?? false;
+    }
+
+    public static function getTotalExtraCharges($booking_id)
+    {
+        return ExtraCharge::where('booking_id', $booking_id)?->sum('total');
+    }
+
+    public static function getExtraChargePaymentAmount($booking_id)
+    {
+        return ExtraCharge::where('booking_id', $booking_id)
+            ?->whereNot('payment_status', PaymentStatus::COMPLETED)
+            ?->sum('total');
+    }
+
+
+    public static function getServicesByZoneIds($zoneIds)
+    {
+        return Service::whereHas('categories', function (Builder $categories) use ($zoneIds) {
+            $categories->whereHas('zones', function (Builder $zones) use ($zoneIds) {
+                $zones->WhereIn('zones.id', $zoneIds);
+            });
+        });
+    }
+
+    public static function getCategoriesByZoneIds($zoneIds)
+    {
+        return Category::whereRelation('zones', function ($zones) use ($zoneIds) {
+            $zones->WhereIn('zone_id', $zoneIds);
+        });
+    }
+
+    public static function getCategoriesByIds($ids)
+    {
+        return Category::whereIn('id', $ids)?->whereNull('deleted_at')?->get();
+    }
+
+    public static function getThemeOptionsPaginate()
+    {
+        $themeOptions = self::getThemeOptions();
+        return $themeOptions['pagination'];
+    }
+
+    public static function getServices($ids = [])
+    {
+        $services = collect();
+        if (count(session('zoneIds', []))) {
+            $services = self::getServicesByZoneIds(session('zoneIds', []))?->where('type', ServiceTypeEnum::FIXED)?->get();
+        }
+
+        if (is_array($ids)) {
+            if (count($ids)) {
+                $services = self::getServicesByIds($ids);
+            }
+        }
+
+        // $paginate = self::getThemeOptionsPaginate();
+        // dd($services);
+        // return $services?->paginate($paginate['service_per_page']);
+
+$paginate = self::getThemeOptionsPaginate(); // Get pagination settings
+
+// Check if $services is a collection (it seems like it is based on your output)
+$services = collect($services); // Ensure it's a collection (this is just a safety check)
+
+// Set the number of items per page
+$perPage = $paginate['service_per_page'];
+
+// Get the current page
+$page = LengthAwarePaginator::resolveCurrentPage(); 
+
+// Slice the collection to get the items for the current page
+$itemsForCurrentPage = $services->forPage($page, $perPage); 
+
+// Create a LengthAwarePaginator instance for the collection
+$paginatedServices = new LengthAwarePaginator(
+    $itemsForCurrentPage, // Items for the current page
+    $services->count(), // Total count of the collection
+    $perPage, // Items per page
+    $page, // Current page number
+    ['path' => LengthAwarePaginator::resolveCurrentPath()] // Current URL path for pagination links
+);
+
+return $paginatedServices;
+
+    }
+
+    public static function getCategories($ids = [])
+    {
+        $categories = collect();
+        if (count(session('zoneIds', []))) {
+            $categories = self::getCategoriesByZoneIds(session('zoneIds', []))?->get();
+        }
+
+        if (is_array($ids)) {
+            if (count($ids)) {
+                $categories = self::getCategoriesByIds($ids);
+            }
+        }
+
+        // $paginate = self::getThemeOptionsPaginate();
+        // return $categories?->paginate($paginate['categories_per_page']);
+
+        $paginate = self::getThemeOptionsPaginate();
+
+// Assuming $categories is a query builder, not a collection.
+$categoriesQuery = Category::query(); // Or any logic to get your query builder
+
+// Apply pagination directly to the query builder
+$categories = $categoriesQuery->paginate($paginate['categories_per_page']);
+
+return $categories;
+
+    }
+
+    public static function getBookingsCountById($id)
+    {
+        $role = self::getRoleByUserId($id);
+        $bookings = 0;
+
+        if ($role == RoleEnum::PROVIDER) {
+            $bookings = Booking::whereNull('parent_id')
+                ->whereHas('sub_bookings', function ($query) use ($id) {
+                    $query->where('provider_id', $id);
+                })->count();
+        } elseif ($role == RoleEnum::CONSUMER) {
+            $bookings = Booking::whereNull('parent_id')
+                ->whereHas('sub_bookings', function ($query) use ($id) {
+                    $query->where('consumer_id', $id);
+                })->count();
+        } elseif ($role == RoleEnum::SERVICEMAN) {
+            $bookings = Booking::whereHas('servicemen', function ($query)  use ($id) {
+                $query->where('users.id', $id);
+            })->whereNotNull('parent_id')
+                ->count();
+        }
+
+        return $bookings;
+    }
+
+    public static function getLanguageByLocale($locale)
+    {
+        return SystemLang::where('locale', $locale)?->whereNull('deleted_at')->first();
+    }
+
+    public static function getServicemenCountById($id)
+    {
+        $role = self::getRoleByUserId($id);
+
+        if ($role == RoleEnum::PROVIDER) {
+            $servicemen = User::role(RoleEnum::SERVICEMAN)->where('system_reserve', false)->where('provider_id', $id)->count();
+        }
+        return $servicemen ?? 0;
+    }
+
+    public static function getServicesCountById($id)
+    {
+
+        $role = self::getRoleByUserId($id);
+
+        if ($role == RoleEnum::PROVIDER) {
+            $services = Service::where('user_id', $id);
+        }
+        return $services?->count() ?? 0;
+    }
+
+    public static function getBalanceById($id)
+    {
+
+        $role = self::getRoleByUserId($id);
+        if ($role == RoleEnum::PROVIDER) {
+            $provider = User::findOrFail($id);
+            $balance = $provider?->providerWallet?->balance;
+        } elseif ($role == RoleEnum::SERVICEMAN) {
+            $servicemen = User::findOrFail($id);
+
+            $balance = $servicemen?->servicemanWallet?->balance;;
+        } elseif ($role == RoleEnum::CONSUMER) {
+            $consumer = User::findOrFail($id);
+            $balance = $consumer?->wallet?->balance;;
+        }
+        return $balance ?? 0.0;
+    }
+
+    public static function isFileExistsFromURL($url, $placeHolder = false)
+    {
+        if(!is_null($url) && !empty($url)) {
+            $localFilePath = public_path(self::getAssetUrl($url));
+            if(file_exists($localFilePath)) {
+                return asset(self::getAssetUrl($url));
+            }
+        }
+        
+        if($placeHolder) {
+            return FrontEnum::getPlaceholderImageUrl();
+        }
+
+        return false;
+    }
+
+    public static function getBookingsCountByStatus($status)
+    {
+        $role = self::getCurrentRoleName();
+        $providerId = null;
+        $servicemanId = null;
+
+        if ($role == RoleEnum::PROVIDER) {
+            $providerId = auth()?->user()?->id;
+        } elseif ($role == RoleEnum::SERVICEMAN) {
+            $servicemanId = auth()?->user()?->id;
+        }
+        $bookings = Booking::getFilteredBookings($providerId,$servicemanId);
+        
+        $bookingCount = $bookings->filter(function ($booking) use ($status) {
+            return $booking->booking_status?->slug === $status;
+        })->count();
+
+
+        return $bookingCount;
+    }
+
 }

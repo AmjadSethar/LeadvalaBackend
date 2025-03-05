@@ -52,7 +52,6 @@ class BookingController extends Controller
      */
     public function store(CreateBookingRequest $request)
     {
-        
         return $this->repository->createBooking($request);
     }
 
