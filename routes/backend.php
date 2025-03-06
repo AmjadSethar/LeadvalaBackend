@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Route;
 Auth::routes(['verify' => false, 'register' => false]);
 Route::post('/set-theme', 'Backend\SettingsController@setTheme')->name('set-theme');
 Route::get('placeId', 'Backend\ProviderController@getPlaceId')->name('placeId');
+Route::get('/become-provider', 'Auth\BecomeProviderController@index')->name('become-provider.index');
+Route::post('/become-provider', 'Auth\BecomeProviderController@store')->name('become-provider.store');
 Route::get('google-address', 'Backend\ProviderController@findAddressBasedOnPlaceId')->name('address');
 
 Route::group(['middleware' => ['auth', 'demo'], 'namespace' => 'Backend', 'as' => 'backend.'], function () {

@@ -4,8 +4,8 @@ $homePage = Helpers::getCurrentHomePage();
 @endphp
 @extends('frontend.layout.master')
 
-{{-- @section('title', $themeOptions['general']['site_title']) --}}
-@section('title', 'LeadVala')
+@section('title', $themeOptions['general']['site_title'])
+{{-- @section('title', 'LeadVala') --}}
 
 @section('content')
 @use('App\Enums\ServiceTypeEnum')
