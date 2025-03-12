@@ -22,7 +22,7 @@ class BookingController extends Controller
     {
         $this->repository = $repository;
         $this->authorizeResource(Booking::class, 'booking', [
-            'except' => ['show', 'store'],
+            'except' => ['show', 'store','edit','update'],
         ]);
     }
 
@@ -36,7 +36,6 @@ class BookingController extends Controller
         try {
             $bookings = $this->repository->whereNotNull('parent_id');
             $bookings = $this->filter($bookings, $request);
-
             return $bookings->latest('created_at')->paginate($request->paginate);
 
         } catch (\Exception $e) {

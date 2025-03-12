@@ -18,16 +18,12 @@ trait CheckoutTrait
         try {
             $settings = Helpers::getSettings();
             $minBookingAmount = $settings['general']['min_booking_amount'];
-            // dd($minBookingAmount);
             $services = $request->services ?? [];
-            //  dd($services);
 
             $service_package = $request->service_packages;
-            //   dd($service_package);
-
+            
             $request->merge(['services' => $services, 'service_package' => $service_package]);
             $amount = Helpers::getTotalAmount($request->services, $request->service_package);
-            // dd($minBookingAmount);
             if ($amount < $minBookingAmount) {
                 
                 throw new Exception(__('errors.minimum_booking_amount',['minBookingAmount' => $minBookingAmount]), 422);
@@ -43,6 +39,7 @@ trait CheckoutTrait
     public function getCosts($request)
     {
         return $this->calculateCosts($request);
+        
     }
 
     public function calculateCosts($request)
@@ -52,10 +49,15 @@ trait CheckoutTrait
             $walletBalance = 0;
             $perServiceCost = [];
             $couponTotalDiscount = [];
+
             $convert_wallet_balance = 0;
+
             $settings = Helpers::getSettings();
+
             $amount = Helpers::getTotalAmount($request->services, $request->service_package);
+
             $items = $this->calculateService($request, $request->services, $amount);
+
             if ($request->service_packages) {
                 $items['services_package'] = $this->calculateServicePackage($request->service_packages, $request);
             }
@@ -258,20 +260,23 @@ trait CheckoutTrait
 
         // Get Platform Fees
         $platFormFees = $this->getPlatFormFees($services);
-        foreach ($services as $service) {
 
+        foreach ($services as $service) {
             $perServicemanCharge = 0;
             $perServiceDiscount = 0;
             $perServiceTax = 0;
+
             $singleServicePrice = Helpers::getSalePrice($service);
+
             $requiredServiceman = Helpers::getTotalRequireServicemenByServiceId($service['service_id']);
-            $total_extra_servicemen = $service['required_servicemen'] - $requiredServiceman;
+
+            $total_extra_servicemen = isset($service['required_servicemen']) ? $service['required_servicemen'] - $requiredServiceman : 0;
+
             $total_servicemen = $requiredServiceman ?? 0 + $total_extra_servicemen ?? 0;
             $perServicemanCharge = ($requiredServiceman != 0) ? ($singleServicePrice / $requiredServiceman) : 0;
             $platformfees = 0;
 
-
-            $subTotal = Helpers::getSubTotal($perServicemanCharge) * $service['required_servicemen'];
+            $subTotal = isset($service['required_servicemen']) ? Helpers::getSubTotal($perServicemanCharge) * $service['required_servicemen'] : 0;
             if (isset($request->coupon)) {
                 $coupon = Helpers::getCoupon($request->coupon);
                 if ($this->isValidCoupon($coupon, $amount, $this->getConsumerId($request))) {
@@ -295,30 +300,56 @@ trait CheckoutTrait
                 }
             }
 
+
             $perServiceTax = $this->getTax($service['service_id'], $subTotal);
             $tax[] = $perServiceTax;
+
+            // $_item['services'][] = [
+            //     'provider_id' => Helpers::getProviderIdByServiceId($service['service_id']),
+            //     'service_id' => $service['service_id'],
+            //     'service_price' => $singleServicePrice,
+            //     'address_id' => $service['address_id'],
+            //     'per_serviceman_charge' => $perServicemanCharge,
+            //     'date_time' => $service['date_time'],
+            //     'servicemen_ids' => $service['serviceman_id'],
+            //     'total' => [
+            //         'required_servicemen' => $requiredServiceman,
+            //         'total_extra_servicemen' => $total_extra_servicemen,
+            //         'total_servicemen' => $total_servicemen,
+            //         'total_serviceman_charge' => $perServicemanCharge * $service['required_servicemen'],
+            //         'coupon_total_discount' => array_sum($couponTotalDiscount),
+            //         'platform_fees' => $platFormFees,
+            //         'platform_fees_type' => $settings['general']['platform_fees_type'],
+            //         'tax' => $perServiceTax,
+            //         'subtotal' => $subTotal,
+            //         'total' => $subTotal + $perServiceTax + $platFormFees,
+            //     ],
+            // ];
 
             $_item['services'][] = [
                 'provider_id' => Helpers::getProviderIdByServiceId($service['service_id']),
                 'service_id' => $service['service_id'],
                 'service_price' => $singleServicePrice,
-                'address_id' => $service['address_id'],
+                'address_id' => isset($service['address_id']),
                 'per_serviceman_charge' => $perServicemanCharge,
-                'date_time' => $service['date_time'],
-                'servicemen_ids' => $service['serviceman_id'],
+                'date_time' => isset($service['date_time']),
+                'servicemen_ids' => isset($service['serviceman_id']) ? $service['serviceman_id'] : [], // Default to empty array if not set
                 'total' => [
-                    'required_servicemen' => $requiredServiceman,
-                    'total_extra_servicemen' => $total_extra_servicemen,
-                    'total_servicemen' => $total_servicemen,
-                    'total_serviceman_charge' => $perServicemanCharge * $service['required_servicemen'],
+                    'required_servicemen' => isset($requiredServiceman) ? $requiredServiceman : 0, // Default to 0 if not set
+                    'total_extra_servicemen' => isset($total_extra_servicemen) ? $total_extra_servicemen : 0, // Default to 0 if not set
+                    'total_servicemen' => isset($total_servicemen) ? $total_servicemen : 0, // Default to 0 if not set
+                    'total_serviceman_charge' => isset($perServicemanCharge) && isset($service['required_servicemen']) ? $perServicemanCharge * $service['required_servicemen'] : 0, // Default to 0 if either value is missing
                     'coupon_total_discount' => array_sum($couponTotalDiscount),
-                    'platform_fees' => $platFormFees,
-                    'platform_fees_type' => $settings['general']['platform_fees_type'],
-                    'tax' => $perServiceTax,
-                    'subtotal' => $subTotal,
-                    'total' => $subTotal + $perServiceTax + $platFormFees,
+                    'platform_fees' => isset($platFormFees) ? $platFormFees : 0, // Default to 0 if not set
+                    'platform_fees_type' => isset($settings['general']['platform_fees_type']) ? $settings['general']['platform_fees_type'] : 'default', // Default to 'default' if not set
+                    'tax' => isset($perServiceTax) ? $perServiceTax : 0, // Default to 0 if not set
+                    'subtotal' => isset($subTotal) ? $subTotal : 0, // Default to 0 if not set
+                    'total' => isset($subTotal) && isset($perServiceTax) && isset($platFormFees) ? $subTotal + $perServiceTax + $platFormFees : 0, // Default to 0 if any value is missing
                 ],
             ];
+
+            
+            
         }
 
         return $_item;

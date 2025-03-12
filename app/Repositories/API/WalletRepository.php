@@ -116,6 +116,7 @@ class WalletRepository extends BaseRepository
         try {
 
             $wallet = $this->debitWallet($request->consumer_id, $request->balance, WalletPointsDetail::ADMIN);
+            
             if ($wallet) {
                 $wallet->setRelation('transactions', $wallet->transactions()
                     ->paginate($request->paginate ?? $wallet->transactions()->count()));

@@ -143,18 +143,11 @@ use App\Models\Service;
             try {
                 
                 $items = $this->calculate($request);
-                // dd('heelo');
                 $booking = $this->booking($items, $request);
-                // dd($booking);
                 $this->storeBooking($items, $request, $booking);
-                // dd('hello');
                 DB::commit();
 
-                // dd('hello');
-
                 return $this->createPayment($booking, $request);
-
-                
 
             } catch (Exception $e) {
 
@@ -243,13 +236,12 @@ use App\Models\Service;
                 }
             }
 
-            // dd('hello');
-
             return $this->storeService($item['services'], $request);
         }
 
         public function booking($service, $request)
         {
+            // dd($request->address_id);
             $booking_number = (string) $this->getBookingNumber(10);
             $booking = $this->model->create([
                 'booking_number' => $booking_number,
@@ -258,7 +250,8 @@ use App\Models\Service;
                 'provider_id' => $service['provider_id'] ?? null,
                 'service_id' => $service['service_id'] ?? null,
                 'service_package_id' => $service['service_package_id'] ?? null,
-                'address_id' => $service['address_id'] ?? null,
+                // 'address_id' => $service['address_id'] ?? null,
+                'address_id' => $request->address_id,
                 'service_price' => $service['service_price'] ?? null,
                 'tax' => $service['total']['tax'],
                 'description' => $service['description'] ?? null,
@@ -293,6 +286,7 @@ use App\Models\Service;
             $this->bookingStatusLog->create($logData);
             event(new CreateBookingEvent($booking));
             return $booking;
+
         }
 
         public function dateTimeFormater($dateTime)
@@ -305,9 +299,9 @@ use App\Models\Service;
             $booking = null;
             foreach ($services as $service) {
                 $booking = $this->booking($service, $request);
+                //  dd($booking);
             }
 
-            // dd('heelo');
 
             return $booking;
         }
