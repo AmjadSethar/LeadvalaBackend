@@ -8,10 +8,10 @@
         <a class="nav-link {{ session('active_tab') == 'address_tab' ? 'show active' : '' }}" id="address-tab" data-bs-toggle="tab" href="#address" role="tab" aria-controls="address" aria-selected="true" data-original-title="" title="" data-tab="1">
             <i data-feather="map-pin"></i> {{ __('static.provider.address') }}</a>
     </li>
-    <li class="nav-item">
+    {{-- <li class="nav-item">
         <a class="nav-link" id="faq-tab" data-bs-toggle="tab" href="#faq" role="tab" aria-controls="faq" aria-selected="true" data-original-title="" title="" data-tab="2">
             <i data-feather="help-circle"></i> {{ __('FAQ\'s') }}</a>
-    </li>
+    </li> --}}
 </ul>
 <div class="tab-content" id="servicetabContent">
     <div class="tab-pane fade {{ session('active_tab') != null ? '' : 'show active' }}" id="general" role="tabpanel" aria-labelledby="general-tab">
@@ -64,7 +64,7 @@
             </div>
         </div>
         
-        @hasrole('admin')
+        {{-- @hasrole('admin')
             <div class="form-group row">
                 <label class="col-md-2" for="provider_id">{{ __('static.service.provider') }}<span> *</span></label>
                 <div class="col-md-10 error-div select-dropdown">
@@ -84,8 +84,8 @@
         @endhasrole
         @hasrole('provider')
             <input type="hidden" name="provider_id" value="{{ auth()->user()->id }}" id="provider_id">
-        @endhasrole
-        <div class="form-group row">
+        @endhasrole --}}
+        {{-- <div class="form-group row">
             <label class="col-md-2" for="required_servicemen">{{ __('static.service.required_servicemen') }}<span>*</span></label>
             <div class="col-md-10">
                 <input class='form-control' type="number" min="1" id="required_servicemen" name="required_servicemen" value="{{ isset($service->required_servicemen) ? $service->required_servicemen : old('required_servicemen') }}"  placeholder="{{ __('static.service.enter_required_servicemen') }}">
@@ -95,7 +95,7 @@
                     </span>
                 @enderror
             </div>
-        </div>
+        </div> --}}
         <div class="form-group row">
             <label class="col-md-2" for="price">{{ __('static.service.price') }}<span> *</span></label>
             <div class="col-md-10 error-div">
@@ -139,7 +139,7 @@
                 @enderror
             </div>
         </div>
-        <div class="form-group row">
+        {{-- <div class="form-group row">
             <label class="col-md-2" for="per_serviceman_commission">{{ __('static.service.per_serviceman_commission') }}<span> *</span></label>
             <div class="col-md-10 error-div">
                 <div class="input-group mb-3 flex-nowrap">
@@ -154,7 +154,7 @@
                         @enderror
                 </div>
             </div>
-        </div>
+        </div> --}}
         <div class="form-group row">
             <label class="col-md-2" for="tax_id">{{ __('static.service.taxes') }}<span> *</span></label>
             <div class="col-md-10 error-div select-dropdown">
@@ -187,7 +187,7 @@
                     <div class="col-md-10 error-div select-dropdown">
                 <select class="select-2 form-control" id="duration_unit" name="duration_unit" data-placeholder="{{ __('static.service.select_duration_unit') }}">
                     <option class="select-placeholder" value=""></option>
-                    @foreach (['hours' => 'Hours', 'minutes' => 'Minutes'] as $key => $option)
+                    @foreach (['day' => 'Day'] as $key => $option)
                         <option class="option" value="{{ $key }}" @if (old('duration_unit', $service->duration_unit ?? '') === $key) selected @endif>{{ $option }}</option>
                     @endforeach
                 </select>
@@ -355,17 +355,17 @@
                     <label class="switch">
                         @if (isset($service))
                             <input class="form-control" type="hidden" name="is_random_related_services" value="0">
-                            <input class="form-check-input" id="is_related" type="checkbox" name="is_random_related_services" id="" value="1" {{ $service->is_random_related_services ? 'checked' : '' }}>
+                            <input class="form-check-input" id="is_related" type="checkbox" name="is_random_related_services" id="" value="1" {{ $service->is_random_related_services ? 'checked' : '' }} checked>
                         @else
                             <input class="form-control" type="hidden" name="is_random_related_services" value="0">
-                            <input class="form-check-input" id="is_related" type="checkbox" name="is_random_related_services" id="" value="1">
+                            <input class="form-check-input" id="is_related" type="checkbox" name="is_random_related_services" id="" value="1" checked>
                         @endif
                         <span class="switch-state"></span>
                     </label>
                 </div>
             </div>
         </div>
-        <div class="form-group row services" @if(isset($service) && $service->is_random_related_services) style="display:none" @endif>
+        <div class="form-group row services" @if(isset($service) && $service->is_random_related_services) style="display:none" @endif style="display:none">
             <label class="col-md-2" for="service_id">{{ __('static.service.related_services') }} <span> *</span></label>
                 <div class="col-md-10 error-div select-dropdown">
                 <select id="related_services" class="select-2 form-control" search="true" name="service_id[]" data-placeholder="{{ __('static.service.select_related_services') }}" multiple>
@@ -437,7 +437,7 @@
                     </div>
                 </div>
             </div>
-            <div class="form-group row">
+            {{-- <div class="form-group row">
                 <label class="col-md-2" for="alternative_name">{{ __('static.address.alternative_name') }}</label>
                 <div class="col-md-10">
                     <input class="form-control" type="text" name="alternative_name" value="{{ old('alternative_name') }}" placeholder="{{ __('static.address.enter_alternative_name') }}">
@@ -484,7 +484,7 @@
                         </span>
                     @enderror
                 </div>
-            </div>
+            </div> --}}
             <div class="form-group row">
                 <label for="country" class="col-md-2">{{ __('static.users.country') }}<span> *</span></label>
                 <div class="col-md-10 error-div select-dropdown">
@@ -614,10 +614,12 @@
         @endif
         <div class="footer">
             <button type="button" class="previousBtn btn cancel">{{ __('static.previous') }}</button>
-            <button class="nextBtn btn btn-primary" type="button">{{ __('static.next') }}</button>
+            {{-- <button class="nextBtn btn btn-primary" type="button">{{ __('static.next') }}</button> --}}
+            <button class="btn btn-primary submitBtn spinner-btn" type="submit">{{ __('static.submit') }}</button>
+
         </div>
     </div>
-    <div class="tab-pane fade" id="faq" role="tabpanel" aria-labelledby="faq-tab">
+    {{-- <div class="tab-pane fade" id="faq" role="tabpanel" aria-labelledby="faq-tab">
         <div class="faq-container mb-2">
             @if (isset($service) && !$service->faqs->isEmpty())
                 @foreach($service->faqs as $index => $faq)
@@ -694,7 +696,7 @@
             <button type="button" class="previousBtn btn cancel">{{ __('static.previous') }}</button>
             <button class="btn btn-primary submitBtn spinner-btn" type="submit">{{ __('static.submit') }}</button>
         </div>
-    </div>
+    </div> --}}
 </div>
 
 @push('js')

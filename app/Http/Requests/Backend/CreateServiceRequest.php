@@ -31,13 +31,13 @@ class CreateServiceRequest extends FormRequest
             'category_id' => 'array|required',
             'category_id*' => 'exists:categories,id',
             'type' => 'required|in:fixed,free',
-            'provider_id' => 'nullable|exists:users,id',
-            'required_servicemen' => 'required|numeric',
+            // 'provider_id' => 'nullable|exists:users,id',
+            // 'required_servicemen' => 'required|numeric',
             'price' => 'required',
             'discount' => 'numeric',
             'tax_id' => 'required|exists:taxes,id',
             'duration' => 'required',
-            'duration_unit' => 'required|in:hours,minutes',
+            'duration_unit' => 'required',
             'service_id' => 'array',
             'service_id*' => 'exists:services,id',
             'country_id' => 'required|exists:countries,id',
@@ -49,8 +49,8 @@ class CreateServiceRequest extends FormRequest
             'alternative_name' => 'string|nullable',
             'area' => 'required|string',
             'address' => 'required',
-            'faqs' => 'required|array',
-            'per_serviceman_commission' => 'required|numeric|between:0,100',
+            // 'faqs' => 'required|array',
+            // 'per_serviceman_commission' => 'required|numeric|between:0,100',
         ];
     }
 

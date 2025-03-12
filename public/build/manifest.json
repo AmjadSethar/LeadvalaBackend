@@ -28,7 +28,7 @@
     "src": "public/admin/images/svg/warning.svg"
   },
   "public/admin/scss/admin.scss": {
-    "file": "assets/admin-e269b16f.css",
+    "file": "assets/admin-732e11cc.css",
     "isEntry": true,
     "src": "public/admin/scss/admin.scss"
   },
@@ -40,7 +40,7 @@
     "css": [
       "assets/app-627c9488.css"
     ],
-    "file": "assets/app-189f7584.js",
+    "file": "assets/app-387b8881.js",
     "isEntry": true,
     "src": "resources/js/app.js"
   }
