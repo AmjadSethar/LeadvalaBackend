@@ -108,7 +108,7 @@ class ServiceDataTable extends DataTable
 
         $builder->addColumn(['data' => 'Image', 'title' => __('static.image'), 'orderable' => false, 'searchable' => false])
             ->addColumn(['data' => 'title', 'title' => __('static.title'), 'orderable' => true, 'searchable' => true])
-            ->addColumn(['data' => 'user.name', 'title' => __('static.service.provider_name'), 'orderable' => true, 'searchable' => true])
+            // ->addColumn(['data' => 'user.name', 'title' => __('static.service.provider_name'), 'orderable' => true, 'searchable' => true])
             ->addColumn(['data' => 'price', 'title' => __('static.service.price'), 'orderable' => true, 'searchable' => true])
             ->addColumn(['data' => 'created_at', 'title' => __('static.created_at'), 'orderable' => true, 'searchable' => true]);
 

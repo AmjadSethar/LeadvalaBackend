@@ -28,6 +28,7 @@ class ServiceController extends Controller
      */
     public function index(ServiceDataTable $dataTable)
     {
+
         return $dataTable->render('backend.service.index');
     }
 
