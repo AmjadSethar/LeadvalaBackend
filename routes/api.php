@@ -58,7 +58,7 @@ Route::group(['middleware' => ['localization']], function () {
     // Users
     Route::get('user', 'App\Http\Controllers\API\UserController@index');
 
-    //Self
+    //Self auth user currenctly login user
     Route::get('self', 'App\Http\Controllers\API\AccountController@self');
 
     // Providers
